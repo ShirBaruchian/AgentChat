@@ -8,6 +8,11 @@ class GeminiService:
     """Service for interacting with Google Gemini API"""
     
     def __init__(self):
+        if not settings.GEMINI_API_KEY:
+            raise ValueError(
+                "GEMINI_API_KEY is not set. Please set it in your .env file. "
+                "Get your API key from: https://aistudio.google.com/app/apikey"
+            )
         genai.configure(api_key=settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
     
@@ -45,7 +50,27 @@ class GeminiService:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
-            return f"I apologize, but I encountered an error: {str(e)}"
+            error_msg = str(e)
+            # Provide user-friendly error messages
+            if "429" in error_msg or "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+                # Extract retry time if available
+                retry_time = None
+                if "retry" in error_msg.lower():
+                    import re
+                    retry_match = re.search(r'retry.*?(\d+\.?\d*)\s*s', error_msg, re.IGNORECASE)
+                    if retry_match:
+                        retry_time = int(float(retry_match.group(1)))
+                
+                if retry_time:
+                    return f"I apologize, but I've reached the API rate limit. Please try again in {retry_time} seconds. You may need to upgrade your Gemini API plan for higher limits."
+                else:
+                    return "I apologize, but I've reached the API rate limit. Please try again in a moment, or consider upgrading your Gemini API plan for higher limits."
+            elif "ACCESS_TOKEN_SCOPE_INSUFFICIENT" in error_msg or "insufficient authentication scopes" in error_msg:
+                return "I apologize, but there's an authentication error. Please check that the Gemini API key is properly configured in the backend."
+            elif "API_KEY_INVALID" in error_msg or "invalid API key" in error_msg.lower():
+                return "I apologize, but the API key is invalid. Please check the Gemini API key configuration."
+            else:
+                return f"I apologize, but I encountered an error: {error_msg}"
     
     def _get_agent_persona(self, agent_id: str) -> str:
         """Get system prompt for agent persona"""

@@ -1,18 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_theme.dart';
+import 'core/config/firebase_config.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/chat/presentation/screens/chat_list_screen.dart';
 import 'services/auth_service.dart';
 
+// Global key to preserve LoginScreen state across rebuilds
+final _loginScreenKey = GlobalKey();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // TODO: Initialize Firebase when ready
-  // For now, running without Firebase for web compatibility
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
+  // Initialize Firebase
+  try {
+    final options = DefaultFirebaseOptions.currentPlatform;
+    print('Initializing Firebase for platform: ${options.projectId}');
+    await Firebase.initializeApp(
+      options: options,
+    );
+    print('Firebase initialized successfully');
+  } catch (e, stackTrace) {
+    print('Error initializing Firebase: $e');
+    print('Stack trace: $stackTrace');
+    // Don't continue - Firebase is required for auth
+    rethrow;
+  }
   
   // Add error handling
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -76,14 +90,11 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthService>(
       builder: (context, authService, _) {
-        if (authService.isLoading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        
+        // Don't show loading screen - let LoginScreen handle its own loading state
+        // This prevents rebuilds that would lose error state
         if (authService.currentUser == null) {
-          return const LoginScreen();
+          // Use a key to preserve LoginScreen state across rebuilds
+          return LoginScreen(key: _loginScreenKey);
         }
         
         return const ChatListScreen();

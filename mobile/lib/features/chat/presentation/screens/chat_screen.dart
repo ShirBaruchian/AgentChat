@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
 import '../../../../models/message.dart';
 import '../../../../models/agent.dart';
+import '../../../../services/api_service.dart';
+import '../../../../services/auth_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final Agent? agent;
@@ -21,10 +24,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Message> _messages = [];
   bool _isTyping = false;
   final _uuid = const Uuid();
+  late final ApiService _apiService;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _apiService = ApiService();
     // Add welcome message
     if (widget.agent != null) {
       _addMessage(
@@ -43,6 +49,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _apiService.dispose();
     super.dispose();
   }
 
@@ -75,87 +82,93 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
+    // Get current user
+    final authService = context.read<AuthService>();
+    final user = authService.currentUser;
+    
+    if (user == null) {
+      _showError('Please sign in to send messages');
+      return;
+    }
+    
+    // Get user ID (works with both MockUser and Firebase User)
+    final userId = user.uid;
+
     // Add user message
     _addMessage(text, isUser: true);
     _messageController.clear();
 
     // Show typing indicator
-    setState(() => _isTyping = true);
+    setState(() {
+      _isTyping = true;
+      _errorMessage = null;
+    });
     _scrollToBottom();
 
-    // Simulate AI response (replace with actual API call later)
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Get agent ID (use default if no agent selected)
+      final agentId = widget.agent?.id ?? 'default';
+      
+      // Build conversation history for context
+      final conversationHistory = _messages
+          .where((m) => m.agentId == agentId)
+          .take(10)
+          .map((m) => m.isUser
+              ? {'user_message': m.text}
+              : {'response': m.text})
+          .toList();
 
-    setState(() => _isTyping = false);
+      // Call backend API
+      final response = await _apiService.sendMessage(
+        userId: userId,
+        agentId: agentId,
+        message: text,
+        conversationHistory: conversationHistory,
+      );
 
-    // Generate mock response based on agent or generic
-    String response;
-    if (widget.agent != null) {
-      response = _generateAgentResponse(text, widget.agent!.name);
-    } else {
-      response = _generateGenericResponse(text);
+      setState(() => _isTyping = false);
+      _addMessage(response, isUser: false);
+    } catch (e) {
+      setState(() {
+        _isTyping = false;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+      
+      // Show error message to user
+      _addMessage(
+        'Sorry, I encountered an error: ${_errorMessage}. Please try again.',
+        isUser: false,
+      );
+      
+      // Also show snackbar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_errorMessage ?? 'Failed to send message'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-
-    _addMessage(response, isUser: false);
+  }
+  
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
-  String _generateAgentResponse(String userMessage, String agentName) {
-    final lowerMessage = userMessage.toLowerCase();
-    
-    if (agentName == 'CEO Coach') {
-      if (lowerMessage.contains('leadership') || lowerMessage.contains('team')) {
-        return 'Great question! Effective leadership starts with clear communication and setting a vision. What specific leadership challenge are you facing?';
-      } else if (lowerMessage.contains('strategy') || lowerMessage.contains('business')) {
-        return 'Strategy is about making choices. What business goal are you trying to achieve? I can help you think through the options.';
-      }
-      return 'That\'s an interesting point. As a CEO coach, I\'d like to understand more about your situation. Can you tell me more about the context?';
-    } else if (agentName == 'Creative Writer') {
-      if (lowerMessage.contains('story') || lowerMessage.contains('character')) {
-        return 'I love working on stories! What genre are you thinking? Let\'s develop some compelling characters together.';
-      } else if (lowerMessage.contains('dialogue') || lowerMessage.contains('script')) {
-        return 'Dialogue is one of my favorite elements! Good dialogue reveals character and advances the plot. What scene are you working on?';
-      }
-      return 'Creative writing is all about imagination and craft. What project are you working on? I\'d be happy to help you develop it!';
-    } else if (agentName == 'Tech Mentor') {
-      if (lowerMessage.contains('code') || lowerMessage.contains('programming')) {
-        return 'Programming is both an art and a science! What technology or language are you working with? I can help you think through the problem.';
-      } else if (lowerMessage.contains('bug') || lowerMessage.contains('error')) {
-        return 'Debugging can be frustrating! Let\'s break down the problem. What error message are you seeing, and what were you trying to do?';
-      }
-      return 'Technology is constantly evolving! What technical challenge are you facing? I\'m here to help you learn and solve problems.';
-    } else if (agentName == 'Life Coach') {
-      if (lowerMessage.contains('goal') || lowerMessage.contains('achieve')) {
-        return 'Setting and achieving goals is powerful! What goal are you working towards? Let\'s create an action plan together.';
-      } else if (lowerMessage.contains('motivation') || lowerMessage.contains('stuck')) {
-        return 'Feeling stuck is normal. Let\'s explore what might be holding you back. What would success look like for you?';
-      }
-      return 'I\'m here to support your personal growth! What area of your life would you like to work on? Let\'s explore it together.';
-    }
-    
-    return _generateGenericResponse(userMessage);
-  }
-
-  String _generateGenericResponse(String userMessage) {
-    final lowerMessage = userMessage.toLowerCase();
-    
-    if (lowerMessage.contains('hello') || lowerMessage.contains('hi')) {
-      return 'Hello! How can I assist you today?';
-    } else if (lowerMessage.contains('help')) {
-      return 'I\'m here to help! What would you like to know or discuss?';
-    } else if (lowerMessage.contains('thank')) {
-      return 'You\'re welcome! Is there anything else I can help you with?';
-    } else if (lowerMessage.contains('bye') || lowerMessage.contains('goodbye')) {
-      return 'Goodbye! Feel free to come back anytime if you need assistance.';
-    }
-    
-    return 'That\'s interesting! Can you tell me more about that? I\'d like to understand better so I can help you.';
-  }
 
   @override
   Widget build(BuildContext context) {
     final agentName = widget.agent?.name ?? 'AI Assistant';
-    final agentColor = widget.agent != null 
-        ? Color(widget.agent!.color) 
+    final agentColor = widget.agent != null && widget.agent!.color != null
+        ? Color(widget.agent!.color!)
         : Theme.of(context).colorScheme.primary;
 
     return Scaffold(

@@ -16,6 +16,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLogin = true;
   bool _isLoading = false;
+  String? _errorMessage;
+
 
   @override
   void dispose() {
@@ -29,30 +31,82 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    // Clear any previous errors
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
-      final authService = context.read<AuthService>();
+      final authService = Provider.of<AuthService>(context, listen: false);
       
       if (_isLogin) {
         await authService.signInWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text,
         );
+        // Sign in successful - AuthWrapper will automatically navigate to chat
       } else {
+        // Sign up
         await authService.signUpWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text,
         );
+        
+        // Sign up successful - Firebase automatically signs the user in
+        // Sign them out so they need to explicitly sign in
+        try {
+          await authService.signOut();
+        } catch (e) {
+          // Ignore sign out errors - user is already signed up
+        }
+        
+        // Show success message and switch to login
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Account created successfully! Please sign in.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          
+          // Switch back to login mode and clear password
+          setState(() {
+            _isLogin = true;
+            _passwordController.clear();
+          });
+        }
       }
     } catch (e) {
+      // Get clean error message
+      String errorMessage = e.toString();
+      
+      // Remove common prefixes
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+      if (errorMessage.startsWith('AuthException: ')) {
+        errorMessage = errorMessage.substring(16);
+      }
+      
+      // Update state with error message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        setState(() {
+          _errorMessage = errorMessage;
+          _isLoading = false;
+        });
       }
     } finally {
-      if (mounted) {
+      if (mounted && _errorMessage == null) {
         setState(() => _isLoading = false);
       }
     }
@@ -85,31 +139,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
-                  // Test credentials hint
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Test Mode: Use any email/password (min 6 chars)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue.shade700,
+                  // Error message display
+                  if (_errorMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.red.shade700,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          GestureDetector(
+                            onTap: () {
+                              setState(() => _errorMessage = null);
+                            },
+                            child: Icon(Icons.close, color: Colors.red.shade700, size: 20),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -159,7 +220,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () {
-                      setState(() => _isLogin = !_isLogin);
+                      setState(() {
+                        _isLogin = !_isLogin;
+                        _errorMessage = null;
+                      });
                     },
                     child: Text(
                       _isLogin

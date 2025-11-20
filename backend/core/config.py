@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:8080",
+        "http://localhost:8000",
         "https://your-app-domain.com",
+        "*",  # Allow all origins for mobile app development (restrict in production)
     ]
     
     # Firebase

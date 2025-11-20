@@ -1,11 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../services/auth_service.dart';
+import '../../../../services/api_service.dart';
 import '../../../../models/agent.dart';
 import 'chat_screen.dart';
 
-class ChatListScreen extends StatelessWidget {
+class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
+
+  @override
+  State<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends State<ChatListScreen> {
+  final ApiService _apiService = ApiService();
+  List<Agent> _agents = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAgents();
+  }
+
+  Future<void> _loadAgents() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final agents = await _apiService.getAgents();
+      setState(() {
+        _agents = agents;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+      
+      // Show error snackbar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load agents: $_errorMessage'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: _loadAgents,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _apiService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,42 +115,72 @@ class ChatListScreen extends StatelessWidget {
           
           // Agent list
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildAgentCard(
-                  context,
-                  title: 'CEO Coach',
-                  description: 'Get expert business advice and leadership guidance',
-                  icon: Icons.business_center,
-                  color: Colors.blue,
-                ),
-                const SizedBox(height: 12),
-                _buildAgentCard(
-                  context,
-                  title: 'Creative Writer',
-                  description: 'Collaborate on stories, scripts, and creative projects',
-                  icon: Icons.edit,
-                  color: Colors.purple,
-                ),
-                const SizedBox(height: 12),
-                _buildAgentCard(
-                  context,
-                  title: 'Tech Mentor',
-                  description: 'Get help with programming and technical questions',
-                  icon: Icons.code,
-                  color: Colors.green,
-                ),
-                const SizedBox(height: 12),
-                _buildAgentCard(
-                  context,
-                  title: 'Life Coach',
-                  description: 'Personal development and life advice',
-                  icon: Icons.favorite,
-                  color: Colors.pink,
-                ),
-              ],
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null && _agents.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Failed to load agents',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _errorMessage ?? 'Unknown error',
+                              style: Theme.of(context).textTheme.bodySmall,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _loadAgents,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _agents.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No agents available',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Check your connection and try again',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _loadAgents,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Refresh'),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _agents.length,
+                            itemBuilder: (context, index) {
+                              final agent = _agents[index];
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: index < _agents.length - 1 ? 12 : 0,
+                                ),
+                                child: _buildAgentCardFromModel(context, agent),
+                              );
+                            },
+                          ),
           ),
         ],
       ),
@@ -113,24 +200,15 @@ class ChatListScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAgentCard(
-    BuildContext context, {
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _buildAgentCardFromModel(BuildContext context, Agent agent) {
+    // Parse icon from string (e.g., "Icons.business_center")
+    IconData iconData = _parseIcon(agent.icon ?? 'Icons.chat_bubble_outline');
+    Color color = Color(agent.color ?? 0xFF757575);
+
     return Card(
       elevation: 2,
       child: InkWell(
         onTap: () {
-          final agent = Agent(
-            id: title.toLowerCase().replaceAll(' ', '_'),
-            name: title,
-            description: description,
-            icon: icon.toString(),
-            color: color.value,
-          );
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -150,7 +228,7 @@ class ChatListScreen extends StatelessWidget {
                   color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color, size: 28),
+                child: Icon(iconData, color: color, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -158,14 +236,14 @@ class ChatListScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      agent.name,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      description,
+                      agent.description,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -177,6 +255,18 @@ class ChatListScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  IconData _parseIcon(String iconString) {
+    // Map icon strings to actual IconData
+    final iconMap = {
+      'Icons.business_center': Icons.business_center,
+      'Icons.edit': Icons.edit,
+      'Icons.code': Icons.code,
+      'Icons.favorite': Icons.favorite,
+      'Icons.chat_bubble_outline': Icons.chat_bubble_outline,
+    };
+    return iconMap[iconString] ?? Icons.chat_bubble_outline;
   }
 }
 

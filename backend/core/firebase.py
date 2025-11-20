@@ -16,23 +16,29 @@ def initialize_firebase():
                 cred = credentials.Certificate(str(cred_path))
                 firebase_admin.initialize_app(cred)
             else:
-                raise FileNotFoundError(
-                    f"Firebase credentials file not found: {cred_path}"
-                )
+                print(f"Warning: Firebase credentials file not found: {cred_path}")
+                print("Firebase features will be disabled. Set FIREBASE_CREDENTIALS_PATH to enable.")
+                return False
         else:
             # Try to use default credentials (for Cloud Functions/Cloud Run)
             try:
                 firebase_admin.initialize_app()
             except Exception as e:
-                raise ValueError(
-                    "Firebase credentials not configured. "
-                    "Set FIREBASE_CREDENTIALS_PATH or use default credentials."
-                ) from e
+                print(f"Warning: Firebase initialization failed: {e}")
+                print("Firebase features will be disabled. Configure Firebase credentials to enable.")
+                return False
+    return True
 
 
 def get_firestore_client():
     """Get Firestore client"""
-    return firestore.client()
+    try:
+        return firestore.client()
+    except Exception as e:
+        raise ValueError(
+            f"Firestore not available: {str(e)}. "
+            "Make sure Firebase is properly initialized with a project ID."
+        )
 
 
 def verify_firebase_token(token: str):

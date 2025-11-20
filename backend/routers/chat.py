@@ -10,7 +10,16 @@ from services.rate_limiter import RateLimiter
 
 router = APIRouter()
 gemini_service = GeminiService()
-rate_limiter = RateLimiter()
+
+# Lazy initialization - will be created on first use
+_rate_limiter = None
+
+def get_rate_limiter():
+    """Get rate limiter instance (lazy initialization)"""
+    global _rate_limiter
+    if _rate_limiter is None:
+        _rate_limiter = RateLimiter()
+    return _rate_limiter
 
 
 class ConnectionManager:
@@ -61,7 +70,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                 continue
             
             # Check rate limits
-            if not await rate_limiter.check_limit(user_id):
+            if not await get_rate_limiter().check_limit(user_id):
                 await websocket.send_text(json.dumps({
                     "error": "Rate limit exceeded. Please upgrade your plan."
                 }))
@@ -85,7 +94,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
             })
             
             # Update rate limiter
-            await rate_limiter.increment_usage(user_id)
+            await get_rate_limiter().increment_usage(user_id)
             
             # Send response
             await websocket.send_text(json.dumps({
@@ -100,6 +109,80 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 @router.post("/message")
 async def send_message(message_data: dict):
     """HTTP endpoint for sending messages (fallback)"""
-    # Similar logic to WebSocket but returns response directly
-    pass
+    try:
+        user_id = message_data.get("user_id")
+        agent_id = message_data.get("agent_id")
+        user_message = message_data.get("message")
+        conversation_history = message_data.get("conversation_history", [])
+        
+        if not user_id or not agent_id or not user_message:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required fields: user_id, agent_id, or message"
+            )
+        
+        # Check rate limits (allow if check fails - for development)
+        try:
+            if not await get_rate_limiter().check_limit(user_id):
+                raise HTTPException(
+                    status_code=429,
+                    detail="Rate limit exceeded. Please upgrade your plan."
+                )
+        except Exception as e:
+            # If rate limiting fails (e.g., Firestore not configured), allow the message
+            print(f"Rate limit check failed (allowing message): {e}")
+        
+        # Get agent response
+        response = await gemini_service.get_agent_response(
+            agent_id=agent_id,
+            user_message=user_message,
+            user_id=user_id,
+            conversation_history=conversation_history
+        )
+        
+        # Save to Firestore (optional - don't fail if Firestore not configured)
+        try:
+            db = get_firestore_client()
+            db.collection("messages").add({
+                "user_id": user_id,
+                "agent_id": agent_id,
+                "message": user_message,
+                "response": response,
+                "timestamp": firestore.SERVER_TIMESTAMP,
+            })
+        except Exception as e:
+            # Log but don't fail if Firestore isn't configured
+            error_str = str(e)
+            # Check for database existence error FIRST (most common after API is enabled)
+            if "does not exist" in error_str or ("404" in error_str and "database" in error_str.lower()):
+                # Database doesn't exist - need to create it
+                if not hasattr(send_message, '_firestore_db_warning_logged'):
+                    print("⚠️  Firestore database doesn't exist. Messages won't be persisted. Create database at: https://console.firebase.google.com/project/agentchat-f7eb8/firestore")
+                    send_message._firestore_db_warning_logged = True
+            elif "SERVICE_DISABLED" in error_str or ("firestore.googleapis.com" in error_str and "not been used" in error_str):
+                # API not enabled
+                if not hasattr(send_message, '_firestore_warning_logged'):
+                    print("⚠️  Firestore API not enabled. Messages won't be persisted. Enable at: https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=agentchat-f7eb8")
+                    send_message._firestore_warning_logged = True
+            else:
+                # Other errors - log once
+                if not hasattr(send_message, '_firestore_other_warning_logged'):
+                    print(f"⚠️  Failed to save message to Firestore (continuing anyway): {e}")
+                    send_message._firestore_other_warning_logged = True
+        
+        # Update rate limiter (optional)
+        try:
+            await get_rate_limiter().increment_usage(user_id)
+        except Exception as e:
+            print(f"Failed to update rate limiter (continuing anyway): {e}")
+        
+        return {
+            "agent_id": agent_id,
+            "response": response,
+            "user_id": user_id,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 

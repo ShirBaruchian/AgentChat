@@ -16,8 +16,14 @@ from core.firebase import initialize_firebase
 # Load environment variables
 load_dotenv()
 
-# Initialize Firebase
-initialize_firebase()
+# Initialize Firebase (optional - app will work without it for development)
+try:
+    firebase_initialized = initialize_firebase()
+    if not firebase_initialized:
+        print("Running without Firebase - some features will be disabled")
+except Exception as e:
+    print(f"Firebase initialization failed: {e}")
+    print("Running without Firebase - some features will be disabled")
 
 # Create FastAPI app
 app = FastAPI(
