@@ -3,6 +3,11 @@ import 'package:provider/provider.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../services/api_service.dart';
 import '../../../../models/agent.dart';
+import '../../../../core/widgets/star_background.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/icon_helper.dart';
 import 'chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -84,16 +89,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final user = authService.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.grey[900],
         elevation: 0,
-        title: const Text(
+        title: Text(
           'AI Agents',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTextStyles.heading3,
         ),
         actions: [
           IconButton(
@@ -114,7 +116,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: Stack(
         children: [
           // Star background
-          _buildStarBackground(),
+          StarBackground(
+            child: Container(),
+          ),
           Column(
             children: [
               // Welcome banner
@@ -136,19 +140,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   children: [
                     Text(
                       'Welcome, ${user?.email?.split('@')[0] ?? 'User'}!',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                      style: AppTextStyles.heading2,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppConstants.spacingXS),
                     Text(
                       'Choose an AI agent to start chatting',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.7),
-                      ),
+                      style: AppTextStyles.caption,
                     ),
                   ],
                 ),
@@ -159,7 +156,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 child: _isLoading && _agents.isEmpty
                     ? const Center(
                         child: CircularProgressIndicator(
-                          color: Color(0xFF10B981),
+                          color: AppTheme.primaryColor,
                         ),
                       )
                     : _errorMessage != null && _agents.isEmpty
@@ -169,21 +166,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               children: [
                                 Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
                                 const SizedBox(height: 16),
-                                const Text(
+                                Text(
                                   'Failed to load agents',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                                  style: AppTextStyles.heading4,
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: AppConstants.spacingS),
                                 Text(
                                   _errorMessage ?? 'Unknown error',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white.withOpacity(0.7),
-                                  ),
+                                  style: AppTextStyles.caption,
                                   textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 16),
@@ -192,7 +182,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                   icon: const Icon(Icons.refresh),
                                   label: const Text('Retry'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
+                                    backgroundColor: AppTheme.primaryColor,
                                     foregroundColor: Colors.white,
                                   ),
                                 ),
@@ -213,22 +203,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                         children: [
                                           Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
                                           const SizedBox(height: 16),
-                                          const Text(
-                                            'No agents available',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Pull down to refresh',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.white.withOpacity(0.7),
-                                            ),
-                                          ),
+                                    Text(
+                                      'No agents available',
+                                      style: AppTextStyles.heading4,
+                                    ),
+                                    const SizedBox(height: AppConstants.spacingS),
+                                    Text(
+                                      'Pull down to refresh',
+                                      style: AppTextStyles.caption,
+                                    ),
                                         ],
                                       ),
                                     ),
@@ -238,18 +221,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             : RefreshIndicator(
                                 onRefresh: _loadAgents,
                                 color: const Color(0xFF10B981),
-                                child: ListView.builder(
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.all(16),
+                                child                            : ListView.builder(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(AppConstants.spacingL),
                                   itemCount: _agents.length,
                                   itemBuilder: (context, index) {
                                     final agent = _agents[index];
-                                    return Padding(
-                                      padding: EdgeInsets.only(
-                                        bottom: index < _agents.length - 1 ? 12 : 0,
-                                      ),
-                                      child: _buildAgentCardFromModel(context, agent),
-                                    );
+                                  return Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: index < _agents.length - 1 ? AppConstants.spacingM : 0,
+                                    ),
+                                    child: _buildAgentCardFromModel(context, agent),
+                                  );
                                   },
                                 ),
                               ),
@@ -268,7 +251,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ),
           );
         },
-        backgroundColor: const Color(0xFF10B981),
+        backgroundColor: AppTheme.primaryColor,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           'New Chat',
@@ -278,24 +261,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  Widget _buildStarBackground() {
-    return CustomPaint(
-      painter: StarBackgroundPainter(),
-      child: Container(),
-    );
-  }
-
   Widget _buildAgentCardFromModel(BuildContext context, Agent agent) {
-    // Parse icon from string (e.g., "Icons.business_center")
-    IconData iconData = _parseIcon(agent.icon ?? 'Icons.chat_bubble_outline');
-    Color color = Color(agent.color ?? 0xFF10B981);
+    final iconData = IconHelper.getAgentIcon(agent.name);
+    final color = Color(agent.color ?? AppTheme.primaryColor.value);
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppConstants.radiusL),
         border: Border.all(
-          color: const Color(0xFF10B981).withOpacity(0.3),
+          color: AppTheme.primaryColor.withOpacity(0.3),
           width: 1,
         ),
         boxShadow: [
@@ -317,14 +292,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppConstants.radiusL),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppConstants.spacingL),
             child: Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: AppConstants.avatarSizeXL,
+                  height: AppConstants.avatarSizeXL,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -334,7 +309,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         color.withOpacity(0.1),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusM),
                     border: Border.all(
                       color: color.withOpacity(0.5),
                       width: 1,
@@ -342,26 +317,19 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   ),
                   child: Icon(iconData, color: color, size: 28),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppConstants.spacingL),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         agent.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        style: AppTextStyles.heading4,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppConstants.spacingXS),
                       Text(
                         agent.description,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
+                        style: AppTextStyles.caption,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -379,35 +347,5 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
     );
   }
-
-  IconData _parseIcon(String iconString) {
-    // Map icon strings to actual IconData
-    final iconMap = {
-      'Icons.business_center': Icons.business_center,
-      'Icons.edit': Icons.edit,
-      'Icons.code': Icons.code,
-      'Icons.favorite': Icons.favorite,
-      'Icons.chat_bubble_outline': Icons.chat_bubble_outline,
-    };
-    return iconMap[iconString] ?? Icons.chat_bubble_outline;
-  }
-}
-
-class StarBackgroundPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
-      ..style = PaintingStyle.fill;
-
-    for (int i = 0; i < 50; i++) {
-      final x = (i * 37.5) % size.width;
-      final y = (i * 23.7) % size.height;
-      canvas.drawCircle(Offset(x, y), 1.5, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 

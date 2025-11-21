@@ -7,6 +7,16 @@ import '../../../../models/ai_provider.dart';
 import '../../../../models/provider_agent.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_service.dart';
+import '../../../../core/widgets/message_bubble.dart';
+import '../../../../core/widgets/typing_indicator.dart';
+import '../../../../core/widgets/agent_dropdown.dart';
+import '../../../../core/widgets/star_background.dart';
+import '../../../../core/widgets/avatar_widget.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/utils/icon_helper.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class ChatScreen extends StatefulWidget {
   final Agent? agent;
@@ -200,14 +210,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       
       // Also show snackbar
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_errorMessage ?? 'Failed to send message'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      _showError(_errorMessage ?? 'Failed to send message');
     }
   }
   
@@ -216,7 +219,11 @@ class _ChatScreenState extends State<ChatScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.radiusM),
+          ),
         ),
       );
     }
@@ -231,37 +238,18 @@ class _ChatScreenState extends State<ChatScreen> {
         : const Color(0xFF10B981);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.grey[900],
         elevation: 0,
         title: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    agentColor.withOpacity(0.3),
-                    agentColor.withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: agentColor.withOpacity(0.5),
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                _getAgentIcon(widget.agent?.name),
-                color: agentColor,
-                size: 20,
-              ),
+            AvatarWidget(
+              icon: IconHelper.getAgentIcon(widget.agent?.name),
+              color: agentColor,
+              size: AppConstants.avatarSizeL,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppConstants.spacingM),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,19 +257,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   Text(
                     agentName,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: AppTextStyles.bodyLarge.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
                     ),
                   ),
                   if (widget.agent != null)
                     Text(
                       widget.agent!.description,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.7),
-                      ),
+                      style: AppTextStyles.caption,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -293,35 +276,52 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           // Agent dropdown
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: _buildAgentDropdown(),
+            padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingS),
+            child: AgentDropdown(
+              selectedAgent: _selectedAgent,
+              allAgents: _allAgents,
+              isLoading: _isLoadingProviderAgents,
+              onChanged: (agent) {
+                setState(() {
+                  _selectedAgent = agent;
+                });
+              },
+            ),
           ),
         ],
       ),
       body: Stack(
         children: [
           // Star background
-          _buildStarBackground(),
+          StarBackground(
+            child: Container(),
+          ),
           Column(
             children: [
               // Messages list
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
-                  padding: EdgeInsets.only(
-                    left: 16,
-                    right: 16,
-                    top: 8,
-                    bottom: 8,
-                    // Add padding if provider selector is visible
+                  padding: const EdgeInsets.only(
+                    left: AppConstants.spacingL,
+                    right: AppConstants.spacingL,
+                    top: AppConstants.spacingS,
+                    bottom: AppConstants.spacingS,
                   ),
                   itemCount: _messages.length + (_isTyping ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == _messages.length) {
                       // Typing indicator
-                      return _buildTypingIndicator(agentColor);
+                      return TypingIndicator(
+                        agentColor: agentColor,
+                        agentIcon: IconHelper.getAgentIcon(widget.agent?.name),
+                      );
                     }
-                    return _buildMessageBubble(_messages[index], agentColor);
+                    return MessageBubble(
+                      message: _messages[index],
+                      agentColor: agentColor,
+                      agentIcon: IconHelper.getAgentIcon(widget.agent?.name),
+                    );
                   },
                 ),
               ),
@@ -340,7 +340,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(AppConstants.spacingS),
                     child: Row(
                       children: [
                         Expanded(
@@ -349,15 +349,17 @@ class _ChatScreenState extends State<ChatScreen> {
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               hintText: 'Type a message...',
-                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                              hintStyle: AppTextStyles.caption.copyWith(
+                                color: Colors.white.withOpacity(0.5),
+                              ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(AppConstants.radiusXXL),
                                 borderSide: BorderSide.none,
                               ),
                               filled: true,
                               fillColor: Colors.grey[800],
                               contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
+                                horizontal: AppConstants.spacingXL,
                                 vertical: 10,
                               ),
                             ),
@@ -366,7 +368,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             onSubmitted: (_) => _sendMessage(),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppConstants.spacingS),
                         Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -403,458 +405,5 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-
-  Widget _buildStarBackground() {
-    return CustomPaint(
-      painter: StarBackgroundPainter(),
-      child: Container(),
-    );
-  }
-
-  Widget _buildMessageBubble(Message message, Color agentColor) {
-    final isUser = message.isUser;
-    
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    agentColor.withOpacity(0.3),
-                    agentColor.withOpacity(0.1),
-                  ],
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: agentColor.withOpacity(0.5),
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                _getAgentIcon(widget.agent?.name),
-                color: agentColor,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: isUser
-                    ? LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          agentColor,
-                          agentColor.withOpacity(0.8),
-                        ],
-                      )
-                    : null,
-                color: isUser ? null : Colors.grey[900],
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: Radius.circular(isUser ? 20 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 20),
-                ),
-                border: isUser
-                    ? null
-                    : Border.all(
-                        color: const Color(0xFF10B981).withOpacity(0.3),
-                        width: 1,
-                      ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isUser
-                        ? agentColor.withOpacity(0.3)
-                        : Colors.black.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isUser ? Colors.white : Colors.white,
-                      fontSize: 15,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        _formatTime(message.timestamp),
-                        style: TextStyle(
-                          color: isUser
-                              ? Colors.white.withOpacity(0.7)
-                              : Colors.white.withOpacity(0.5),
-                          fontSize: 11,
-                        ),
-                      ),
-                      if (!isUser && message.provider != null) ...[
-                        const SizedBox(width: 8),
-                        Builder(
-                          builder: (context) {
-                            final provider = aiProviderFromString(message.provider!);
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Color(provider.color).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Color(provider.color).withOpacity(0.3),
-                                  width: 0.5,
-                                ),
-                              ),
-                              child: Text(
-                                provider.icon,
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (isUser) ...[
-            const SizedBox(width: 8),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.grey[700]!,
-                    Colors.grey[800]!,
-                  ],
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.grey[600]!.withOpacity(0.5),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.person,
-                size: 18,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypingIndicator(Color agentColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  agentColor.withOpacity(0.3),
-                  agentColor.withOpacity(0.1),
-                ],
-              ),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: agentColor.withOpacity(0.5),
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              _getAgentIcon(widget.agent?.name),
-              color: agentColor,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(20),
-              ),
-              border: Border.all(
-                color: const Color(0xFF10B981).withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTypingDot(0, agentColor),
-                const SizedBox(width: 4),
-                _buildTypingDot(1, agentColor),
-                const SizedBox(width: 4),
-                _buildTypingDot(2, agentColor),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypingDot(int index, Color agentColor) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOut,
-      builder: (context, value, child) {
-        final delay = index * 0.2;
-        final animatedValue = ((value + delay) % 1.0);
-        return Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: agentColor.withOpacity(0.3 + (animatedValue * 0.5)),
-            shape: BoxShape.circle,
-          ),
-        );
-      },
-    );
-  }
-
-  IconData _getAgentIcon(String? agentName) {
-    switch (agentName) {
-      case 'CEO Coach':
-        return Icons.business_center;
-      case 'Creative Writer':
-        return Icons.edit;
-      case 'Tech Mentor':
-        return Icons.code;
-      case 'Life Coach':
-        return Icons.favorite;
-      default:
-        return Icons.chat_bubble_outline;
-    }
-  }
-
-  String _formatTime(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
-    }
-  }
-
-  Widget _buildAgentDropdown() {
-    if (_isLoadingProviderAgents || _allAgents.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.grey[700]!,
-            width: 1,
-          ),
-        ),
-        child: const SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.white70,
-          ),
-        ),
-      );
-    }
-
-    final selectedAgent = _selectedAgent ?? _allAgents.first;
-    final providerColor = Color(selectedAgent.provider.color);
-
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 140),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: providerColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: providerColor.withOpacity(0.5),
-          width: 1,
-        ),
-      ),
-      child: DropdownButton<ProviderAgent>(
-        value: selectedAgent,
-        isDense: true,
-        isExpanded: true,
-        underline: const SizedBox.shrink(),
-        icon: Icon(Icons.arrow_drop_down, color: providerColor, size: 18),
-        dropdownColor: Colors.grey[900],
-        menuMaxHeight: 400,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        items: _allAgents.map((agent) {
-          final agentProviderColor = Color(agent.provider.color);
-          final isSelected = agent.id == selectedAgent.id;
-          return DropdownMenuItem<ProviderAgent>(
-            value: agent,
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 280),
-              height: 56,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: agentProviderColor.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: agentProviderColor.withOpacity(0.5),
-                        width: 1,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        agent.provider.icon,
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          agent.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          agent.description,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 11,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isSelected) ...[
-                    const SizedBox(width: 6),
-                    Icon(
-                      Icons.check_circle,
-                      color: agentProviderColor,
-                      size: 18,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-        onChanged: (ProviderAgent? newAgent) {
-          if (newAgent != null) {
-            setState(() {
-              _selectedAgent = newAgent;
-            });
-          }
-        },
-        selectedItemBuilder: (BuildContext context) {
-          return _allAgents.map((agent) {
-            return Container(
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    agent.provider.icon,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      agent.name,
-                      style: TextStyle(
-                        color: providerColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList();
-        },
-      ),
-    );
-  }
-}
-
-class StarBackgroundPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
-      ..style = PaintingStyle.fill;
-
-    for (int i = 0; i < 50; i++) {
-      final x = (i * 37.5) % size.width;
-      final y = (i * 23.7) % size.height;
-      canvas.drawCircle(Offset(x, y), 1.5, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
