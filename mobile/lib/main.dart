@@ -5,7 +5,9 @@ import 'core/theme/app_theme.dart';
 import 'core/config/firebase_config.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/chat/presentation/screens/chat_list_screen.dart';
+import 'features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
+import 'services/onboarding_service.dart';
 
 // Global key to preserve LoginScreen state across rebuilds
 final _loginScreenKey = GlobalKey();
@@ -54,7 +56,7 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.system,
-          home: const AuthWrapper(),
+          home: const AppInitializer(),
           debugShowCheckedModeBanner: false,
         ),
       );
@@ -80,6 +82,49 @@ class MyApp extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+class AppInitializer extends StatefulWidget {
+  const AppInitializer({super.key});
+
+  @override
+  State<AppInitializer> createState() => _AppInitializerState();
+}
+
+class _AppInitializerState extends State<AppInitializer> {
+  bool _isLoading = true;
+  bool _showOnboarding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    final isCompleted = await OnboardingService.isOnboardingCompleted();
+    setState(() {
+      _showOnboarding = !isCompleted;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_showOnboarding) {
+      return const OnboardingScreen();
+    }
+
+    return const AuthWrapper();
   }
 }
 

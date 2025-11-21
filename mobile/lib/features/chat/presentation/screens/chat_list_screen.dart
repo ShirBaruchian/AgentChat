@@ -70,17 +70,26 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final user = authService.currentUser;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
-        title: const Text('AI Agents'),
+        backgroundColor: Colors.grey[900],
+        elevation: 0,
+        title: const Text(
+          'AI Agents',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings, color: Colors.white70),
             onPressed: () {
               // Navigate to settings
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white70),
             onPressed: () async {
               await authService.signOut();
             },
@@ -88,99 +97,145 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Welcome banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: Theme.of(context).colorScheme.primaryContainer,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome, ${user?.email ?? 'User'}!',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+          // Star background
+          _buildStarBackground(),
+          Column(
+            children: [
+              // Welcome banner
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF10B981).withOpacity(0.2),
+                      const Color(0xFF6366F1).withOpacity(0.2),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Choose an AI agent to start chatting',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome, ${user?.email?.split('@')[0] ?? 'User'}!',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Choose an AI agent to start chatting',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          
-          // Agent list
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null && _agents.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Failed to load agents',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _errorMessage ?? 'Unknown error',
-                              style: Theme.of(context).textTheme.bodySmall,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _loadAgents,
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Retry'),
-                            ),
-                          ],
+              ),
+              
+              // Agent list
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF10B981),
                         ),
                       )
-                    : _agents.isEmpty
+                    : _errorMessage != null && _agents.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                                Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
                                 const SizedBox(height: 16),
-                                Text(
-                                  'No agents available',
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                const Text(
+                                  'Failed to load agents',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Check your connection and try again',
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  _errorMessage ?? 'Unknown error',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withOpacity(0.7),
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 16),
                                 ElevatedButton.icon(
                                   onPressed: _loadAgents,
                                   icon: const Icon(Icons.refresh),
-                                  label: const Text('Refresh'),
+                                  label: const Text('Retry'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF10B981),
+                                    foregroundColor: Colors.white,
+                                  ),
                                 ),
                               ],
                             ),
                           )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _agents.length,
-                            itemBuilder: (context, index) {
-                              final agent = _agents[index];
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: index < _agents.length - 1 ? 12 : 0,
+                        : _agents.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'No agents available',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Check your connection and try again',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white.withOpacity(0.7),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton.icon(
+                                      onPressed: _loadAgents,
+                                      icon: const Icon(Icons.refresh),
+                                      label: const Text('Refresh'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF10B981),
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: _buildAgentCardFromModel(context, agent),
-                              );
-                            },
-                          ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: _agents.length,
+                                itemBuilder: (context, index) {
+                                  final agent = _agents[index];
+                                  return Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: index < _agents.length - 1 ? 12 : 0,
+                                    ),
+                                    child: _buildAgentCardFromModel(context, agent),
+                                  );
+                                },
+                              ),
+              ),
+            ],
           ),
         ],
       ),
@@ -194,63 +249,112 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ),
           );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('New Chat'),
+        backgroundColor: const Color(0xFF10B981),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'New Chat',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
+    );
+  }
+
+  Widget _buildStarBackground() {
+    return CustomPaint(
+      painter: StarBackgroundPainter(),
+      child: Container(),
     );
   }
 
   Widget _buildAgentCardFromModel(BuildContext context, Agent agent) {
     // Parse icon from string (e.g., "Icons.business_center")
     IconData iconData = _parseIcon(agent.icon ?? 'Icons.chat_bubble_outline');
-    Color color = Color(agent.color ?? 0xFF757575);
+    Color color = Color(agent.color ?? 0xFF10B981);
 
-    return Card(
-      elevation: 2,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatScreen(agent: agent),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(iconData, color: color, size: 28),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF10B981).withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatScreen(agent: agent),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      agent.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color.withOpacity(0.3),
+                        color.withOpacity(0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: color.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(iconData, color: color, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        agent.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      agent.description,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        agent.description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -268,5 +372,23 @@ class _ChatListScreenState extends State<ChatListScreen> {
     };
     return iconMap[iconString] ?? Icons.chat_bubble_outline;
   }
+}
+
+class StarBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.1)
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 50; i++) {
+      final x = (i * 37.5) % size.width;
+      final y = (i * 23.7) % size.height;
+      canvas.drawCircle(Offset(x, y), 1.5, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 

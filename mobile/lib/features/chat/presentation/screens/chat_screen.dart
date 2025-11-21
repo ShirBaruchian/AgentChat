@@ -136,7 +136,7 @@ class _ChatScreenState extends State<ChatScreen> {
       
       // Show error message to user
       _addMessage(
-        'Sorry, I encountered an error: ${_errorMessage}. Please try again.',
+        'Sorry, I encountered an error: $_errorMessage. Please try again.',
         isUser: false,
       );
       
@@ -169,18 +169,32 @@ class _ChatScreenState extends State<ChatScreen> {
     final agentName = widget.agent?.name ?? 'AI Assistant';
     final agentColor = widget.agent != null && widget.agent!.color != null
         ? Color(widget.agent!.color!)
-        : Theme.of(context).colorScheme.primary;
+        : const Color(0xFF10B981);
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
+        backgroundColor: Colors.grey[900],
+        elevation: 0,
         title: Row(
           children: [
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: agentColor.withOpacity(0.2),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    agentColor.withOpacity(0.3),
+                    agentColor.withOpacity(0.1),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: agentColor.withOpacity(0.5),
+                  width: 1,
+                ),
               ),
               child: Icon(
                 _getAgentIcon(widget.agent?.name),
@@ -196,12 +210,19 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   Text(
                     agentName,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   if (widget.agent != null)
                     Text(
                       widget.agent!.description,
-                      style: const TextStyle(fontSize: 12),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -211,81 +232,110 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Messages list
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: _messages.length + (_isTyping ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length) {
-                  // Typing indicator
-                  return _buildTypingIndicator();
-                }
-                return _buildMessageBubble(_messages[index], agentColor);
-              },
-            ),
-          ),
-          
-          // Input area
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
+          // Star background
+          _buildStarBackground(),
+          Column(
+            children: [
+              // Messages list
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: _messages.length + (_isTyping ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == _messages.length) {
+                      // Typing indicator
+                      return _buildTypingIndicator(agentColor);
+                    }
+                    return _buildMessageBubble(_messages[index], agentColor);
+                  },
                 ),
-              ],
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
-                        ),
-                        maxLines: null,
-                        textCapitalization: TextCapitalization.sentences,
-                        onSubmitted: (_) => _sendMessage(),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: agentColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        onPressed: _sendMessage,
-                        icon: const Icon(Icons.send, color: Colors.white),
-                        tooltip: 'Send',
-                      ),
+              ),
+              
+              // Input area
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
                     ),
                   ],
                 ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _messageController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'Type a message...',
+                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey[800],
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                            ),
+                            maxLines: null,
+                            textCapitalization: TextCapitalization.sentences,
+                            onSubmitted: (_) => _sendMessage(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                agentColor,
+                                agentColor.withOpacity(0.8),
+                              ],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: agentColor.withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            onPressed: _sendMessage,
+                            icon: const Icon(Icons.send, color: Colors.white),
+                            tooltip: 'Send',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStarBackground() {
+    return CustomPaint(
+      painter: StarBackgroundPainter(),
+      child: Container(),
     );
   }
 
@@ -303,8 +353,19 @@ class _ChatScreenState extends State<ChatScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: agentColor.withOpacity(0.2),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    agentColor.withOpacity(0.3),
+                    agentColor.withOpacity(0.1),
+                  ],
+                ),
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: agentColor.withOpacity(0.5),
+                  width: 1,
+                ),
               ),
               child: Icon(
                 _getAgentIcon(widget.agent?.name),
@@ -318,19 +379,35 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser
-                    ? agentColor
-                    : Theme.of(context).colorScheme.surface,
+                gradient: isUser
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          agentColor,
+                          agentColor.withOpacity(0.8),
+                        ],
+                      )
+                    : null,
+                color: isUser ? null : Colors.grey[900],
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
                   bottomLeft: Radius.circular(isUser ? 20 : 4),
                   bottomRight: Radius.circular(isUser ? 4 : 20),
                 ),
+                border: isUser
+                    ? null
+                    : Border.all(
+                        color: const Color(0xFF10B981).withOpacity(0.3),
+                        width: 1,
+                      ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
+                    color: isUser
+                        ? agentColor.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.3),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -341,7 +418,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     message.text,
                     style: TextStyle(
-                      color: isUser ? Colors.white : null,
+                      color: isUser ? Colors.white : Colors.white,
                       fontSize: 15,
                       height: 1.4,
                     ),
@@ -352,7 +429,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     style: TextStyle(
                       color: isUser
                           ? Colors.white.withOpacity(0.7)
-                          : Colors.grey.shade600,
+                          : Colors.white.withOpacity(0.5),
                       fontSize: 11,
                     ),
                   ),
@@ -366,13 +443,24 @@ class _ChatScreenState extends State<ChatScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.grey[700]!,
+                    Colors.grey[800]!,
+                  ],
+                ),
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.grey[600]!.withOpacity(0.5),
+                  width: 1,
+                ),
               ),
               child: const Icon(
                 Icons.person,
                 size: 18,
-                color: Colors.grey,
+                color: Colors.white,
               ),
             ),
           ],
@@ -381,7 +469,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildTypingIndicator() {
+  Widget _buildTypingIndicator(Color agentColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -390,12 +478,23 @@ class _ChatScreenState extends State<ChatScreen> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  agentColor.withOpacity(0.3),
+                  agentColor.withOpacity(0.1),
+                ],
+              ),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: agentColor.withOpacity(0.5),
+                width: 1,
+              ),
             ),
             child: Icon(
               _getAgentIcon(widget.agent?.name),
-              color: Theme.of(context).colorScheme.primary,
+              color: agentColor,
               size: 18,
             ),
           ),
@@ -403,22 +502,26 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: Colors.grey[900],
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
                 bottomLeft: Radius.circular(4),
                 bottomRight: Radius.circular(20),
               ),
+              border: Border.all(
+                color: const Color(0xFF10B981).withOpacity(0.3),
+                width: 1,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildTypingDot(0),
+                _buildTypingDot(0, agentColor),
                 const SizedBox(width: 4),
-                _buildTypingDot(1),
+                _buildTypingDot(1, agentColor),
                 const SizedBox(width: 4),
-                _buildTypingDot(2),
+                _buildTypingDot(2, agentColor),
               ],
             ),
           ),
@@ -427,7 +530,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildTypingDot(int index) {
+  Widget _buildTypingDot(int index, Color agentColor) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 600),
@@ -439,7 +542,7 @@ class _ChatScreenState extends State<ChatScreen> {
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.3 + (animatedValue * 0.4)),
+            color: agentColor.withOpacity(0.3 + (animatedValue * 0.5)),
             shape: BoxShape.circle,
           ),
         );
@@ -476,5 +579,23 @@ class _ChatScreenState extends State<ChatScreen> {
       return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
     }
   }
+}
+
+class StarBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.1)
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 50; i++) {
+      final x = (i * 37.5) % size.width;
+      final y = (i * 23.7) % size.height;
+      canvas.drawCircle(Offset(x, y), 1.5, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
