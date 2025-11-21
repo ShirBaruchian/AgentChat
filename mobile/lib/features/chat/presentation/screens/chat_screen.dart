@@ -3,6 +3,8 @@ import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
 import '../../../../models/message.dart';
 import '../../../../models/agent.dart';
+import '../../../../models/ai_provider.dart';
+import '../../../../models/provider_agent.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_service.dart';
 
@@ -26,11 +28,16 @@ class _ChatScreenState extends State<ChatScreen> {
   final _uuid = const Uuid();
   late final ApiService _apiService;
   String? _errorMessage;
+  ProviderAgent? _selectedAgent;
+  List<ProviderAgent> _allAgents = []; // All available agents from all providers
+  bool _isLoadingProviderAgents = false;
 
   @override
   void initState() {
     super.initState();
     _apiService = ApiService();
+    // Load provider agents from API
+    _loadProviderAgents();
     // Add welcome message
     if (widget.agent != null) {
       _addMessage(
@@ -45,6 +52,48 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// Load provider agents from the API service
+  Future<void> _loadProviderAgents() async {
+    setState(() {
+      _isLoadingProviderAgents = true;
+    });
+
+    try {
+      // Fetch all provider agents from the API
+      final agents = await _apiService.getProviderAgents();
+      
+      // Set all agents and select the first one (or auto if available)
+      setState(() {
+        _allAgents = agents;
+        // Select auto agent if available, otherwise select the first one
+        _selectedAgent = agents.firstWhere(
+          (agent) => agent.id == 'auto' || agent.isDefault,
+          orElse: () => agents.isNotEmpty ? agents.first : ProviderAgent(
+            id: 'auto',
+            name: 'Auto Select',
+            description: 'Automatically chooses the best model',
+            provider: AIProvider.auto,
+            modelId: 'auto',
+            isDefault: true,
+          ),
+        );
+        _isLoadingProviderAgents = false;
+      });
+    } catch (e) {
+      print('Failed to load provider agents from API: $e');
+      // Fall back to hardcoded agents if API fails
+      final fallbackAgents = ProviderAgent.getDefaultAgents();
+      setState(() {
+        _allAgents = fallbackAgents;
+        _selectedAgent = fallbackAgents.firstWhere(
+          (agent) => agent.id == 'auto' || agent.isDefault,
+          orElse: () => fallbackAgents.first,
+        );
+        _isLoadingProviderAgents = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _messageController.dispose();
@@ -53,7 +102,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void _addMessage(String text, {required bool isUser}) {
+  void _addMessage(String text, {required bool isUser, String? provider, String? modelId}) {
     setState(() {
       _messages.add(Message(
         id: _uuid.v4(),
@@ -61,6 +110,7 @@ class _ChatScreenState extends State<ChatScreen> {
         isUser: isUser,
         timestamp: DateTime.now(),
         agentId: widget.agent?.id,
+        provider: provider,
       ));
     });
     _scrollToBottom();
@@ -119,15 +169,24 @@ class _ChatScreenState extends State<ChatScreen> {
           .toList();
 
       // Call backend API
+      final modelId = _selectedAgent?.modelId ?? 'auto';
+      final provider = _selectedAgent?.provider != null ? _selectedAgent!.provider : null;
       final response = await _apiService.sendMessage(
         userId: userId,
         agentId: agentId,
         message: text,
         conversationHistory: conversationHistory,
+        provider: provider,
+        modelId: modelId,
       );
 
       setState(() => _isTyping = false);
-      _addMessage(response, isUser: false);
+      _addMessage(
+        response,
+        isUser: false,
+        provider: _selectedAgent?.provider != null ? _selectedAgent!.provider.apiValue : null,
+        modelId: _selectedAgent?.modelId,
+      );
     } catch (e) {
       setState(() {
         _isTyping = false;
@@ -231,6 +290,13 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+        actions: [
+          // Agent dropdown
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: _buildAgentDropdown(),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -242,7 +308,13 @@ class _ChatScreenState extends State<ChatScreen> {
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 8,
+                    bottom: 8,
+                    // Add padding if provider selector is visible
+                  ),
                   itemCount: _messages.length + (_isTyping ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == _messages.length) {
@@ -424,14 +496,41 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    _formatTime(message.timestamp),
-                    style: TextStyle(
-                      color: isUser
-                          ? Colors.white.withOpacity(0.7)
-                          : Colors.white.withOpacity(0.5),
-                      fontSize: 11,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        _formatTime(message.timestamp),
+                        style: TextStyle(
+                          color: isUser
+                              ? Colors.white.withOpacity(0.7)
+                              : Colors.white.withOpacity(0.5),
+                          fontSize: 11,
+                        ),
+                      ),
+                      if (!isUser && message.provider != null) ...[
+                        const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final provider = aiProviderFromString(message.provider!);
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Color(provider.color).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Color(provider.color).withOpacity(0.3),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Text(
+                                provider.icon,
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -578,6 +677,166 @@ class _ChatScreenState extends State<ChatScreen> {
     } else {
       return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
     }
+  }
+
+  Widget _buildAgentDropdown() {
+    if (_isLoadingProviderAgents || _allAgents.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.grey[700]!,
+            width: 1,
+          ),
+        ),
+        child: const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white70,
+          ),
+        ),
+      );
+    }
+
+    final selectedAgent = _selectedAgent ?? _allAgents.first;
+    final providerColor = Color(selectedAgent.provider.color);
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 140),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: providerColor.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: providerColor.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: DropdownButton<ProviderAgent>(
+        value: selectedAgent,
+        isDense: true,
+        isExpanded: true,
+        underline: const SizedBox.shrink(),
+        icon: Icon(Icons.arrow_drop_down, color: providerColor, size: 18),
+        dropdownColor: Colors.grey[900],
+        menuMaxHeight: 400,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        items: _allAgents.map((agent) {
+          final agentProviderColor = Color(agent.provider.color);
+          final isSelected = agent.id == selectedAgent.id;
+          return DropdownMenuItem<ProviderAgent>(
+            value: agent,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 280),
+              height: 56,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: agentProviderColor.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: agentProviderColor.withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        agent.provider.icon,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          agent.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          agent.description,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isSelected) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.check_circle,
+                      color: agentProviderColor,
+                      size: 18,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+        onChanged: (ProviderAgent? newAgent) {
+          if (newAgent != null) {
+            setState(() {
+              _selectedAgent = newAgent;
+            });
+          }
+        },
+        selectedItemBuilder: (BuildContext context) {
+          return _allAgents.map((agent) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    agent.provider.icon,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      agent.name,
+                      style: TextStyle(
+                        color: providerColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList();
+        },
+      ),
+    );
   }
 }
 

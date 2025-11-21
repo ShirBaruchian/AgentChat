@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../core/config/api_config.dart';
 import '../models/agent.dart';
 import '../models/message.dart';
+import '../models/ai_provider.dart';
+import '../models/provider_agent.dart';
 
 class ApiService {
   final http.Client _client;
@@ -41,6 +43,8 @@ class ApiService {
     required String agentId,
     required String message,
     List<Map<String, dynamic>>? conversationHistory,
+    AIProvider? provider,
+    String? modelId,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -52,6 +56,8 @@ class ApiService {
         'message': message,
         if (conversationHistory != null)
           'conversation_history': conversationHistory,
+        if (provider != null) 'provider': provider.apiValue,
+        if (modelId != null) 'model_id': modelId,
       };
 
       final response = await _client
@@ -101,6 +107,40 @@ class ApiService {
       } else {
         throw Exception(
             'Failed to load agents: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
+
+  /// Get list of provider agents (models) for a specific AI provider
+  /// If provider is null, returns all provider agents
+  Future<List<ProviderAgent>> getProviderAgents({AIProvider? provider}) async {
+    try {
+      final headers = await _getHeaders();
+      var url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.providerAgentsEndpoint}');
+      
+      // Add provider query parameter if specified
+      if (provider != null) {
+        url = url.replace(queryParameters: {'provider': provider.apiValue});
+      }
+
+      final response = await _client
+          .get(
+            url,
+            headers: headers,
+          )
+          .timeout(ApiConfig.receiveTimeout);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => ProviderAgent.fromJson(json)).toList();
+      } else {
+        throw Exception(
+            'Failed to load provider agents: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       if (e is Exception) {

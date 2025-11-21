@@ -25,16 +25,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Future<void> _loadAgents() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // Only show loading indicator if we don't have any agents yet
+    if (_agents.isEmpty) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
+      // Always fetch fresh agents from the backend
       final agents = await _apiService.getAgents();
       setState(() {
         _agents = agents;
         _isLoading = false;
+        _errorMessage = null;
       });
     } catch (e) {
       setState(() {
@@ -42,8 +47,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
         _isLoading = false;
       });
       
-      // Show error snackbar
-      if (mounted) {
+      // Show error snackbar only if we don't have cached agents
+      if (mounted && _agents.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load agents: $_errorMessage'),
@@ -52,6 +57,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
               label: 'Retry',
               onPressed: _loadAgents,
             ),
+          ),
+        );
+      } else if (mounted) {
+        // If we have cached agents, show a less intrusive error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to refresh agents: $_errorMessage'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -142,7 +156,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               
               // Agent list
               Expanded(
-                child: _isLoading
+                child: _isLoading && _agents.isEmpty
                     ? const Center(
                         child: CircularProgressIndicator(
                           color: Color(0xFF10B981),
@@ -186,53 +200,58 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             ),
                           )
                         : _agents.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-                                    const SizedBox(height: 16),
-                                    const Text(
-                                      'No agents available',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                            ? RefreshIndicator(
+                                onRefresh: _loadAgents,
+                                color: const Color(0xFF10B981),
+                                child: SingleChildScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  child: SizedBox(
+                                    height: MediaQuery.of(context).size.height * 0.6,
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
+                                          const SizedBox(height: 16),
+                                          const Text(
+                                            'No agents available',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Pull down to refresh',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.white.withOpacity(0.7),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Check your connection and try again',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.white.withOpacity(0.7),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton.icon(
-                                      onPressed: _loadAgents,
-                                      icon: const Icon(Icons.refresh),
-                                      label: const Text('Refresh'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF10B981),
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               )
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: _agents.length,
-                                itemBuilder: (context, index) {
-                                  final agent = _agents[index];
-                                  return Padding(
-                                    padding: EdgeInsets.only(
-                                      bottom: index < _agents.length - 1 ? 12 : 0,
-                                    ),
-                                    child: _buildAgentCardFromModel(context, agent),
-                                  );
-                                },
+                            : RefreshIndicator(
+                                onRefresh: _loadAgents,
+                                color: const Color(0xFF10B981),
+                                child: ListView.builder(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: _agents.length,
+                                  itemBuilder: (context, index) {
+                                    final agent = _agents[index];
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: index < _agents.length - 1 ? 12 : 0,
+                                      ),
+                                      child: _buildAgentCardFromModel(context, agent),
+                                    );
+                                  },
+                                ),
                               ),
               ),
             ],

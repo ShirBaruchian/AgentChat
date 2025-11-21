@@ -10,6 +10,7 @@ class ApiConfig {
   // API endpoints
   static const String chatEndpoint = '/api/chat/message';
   static const String agentsEndpoint = '/api/agents';
+  static const String providerAgentsEndpoint = '/api/provider-agents'; // Endpoint for AI provider models
   static const String subscriptionEndpoint = '/api/subscription';
   static const String healthEndpoint = '/health';
 
