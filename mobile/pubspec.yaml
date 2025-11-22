@@ -63,11 +63,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Assets (uncomment when you add assets)
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
-  #   - assets/animations/
+  # Assets
+  assets:
+    - assets/images/
+    - assets/icons/
 
   # Fonts - Using google_fonts package instead (already in dependencies)
   # Custom fonts can be added later if needed

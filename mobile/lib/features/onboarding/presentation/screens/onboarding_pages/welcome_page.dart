@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
+import '../../../../../core/widgets/celtic_knot_logo.dart';
 
 class WelcomePage extends StatefulWidget {
   final VoidCallback onContinue;
@@ -75,7 +76,7 @@ class _WelcomePageState extends State<WelcomePage>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                   const SizedBox(height: 20),
-                // AIBY Brand
+                // MazeAI Brand
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: SlideTransition(
@@ -88,7 +89,7 @@ class _WelcomePageState extends State<WelcomePage>
                         ],
                       ).createShader(bounds),
                       child: const Text(
-                        'AIBY',
+                        'MazeAI',
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
@@ -106,31 +107,13 @@ class _WelcomePageState extends State<WelcomePage>
                     position: _slideAnimation,
                     child: Column(
                       children: [
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.white.withOpacity(0.1),
-                                Colors.white.withOpacity(0.05),
-                              ],
-                            ),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
-                              width: 2,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.chat_bubble_outline,
-                            size: 60,
-                            color: Colors.white,
-                          ),
+                        const CelticKnotLogo(
+                          size: 120,
+                          color: Colors.white,
                         ),
                         const SizedBox(height: 24),
                         const Text(
-                          'ChatOn',
+                          'ChatX',
                           style: TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,

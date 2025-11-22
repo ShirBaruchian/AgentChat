@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Center(
               child: Text(
-                'ChatOn',
+                'ChatX',
                 style: AppTextStyles.heading2,
               ),
             ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/celtic_knot_logo.dart';
 import '../../../../services/subscription_service.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -64,18 +65,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   // Logo
                   FadeTransition(
                     opacity: _animationController,
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome,
-                        size: 30,
-                        color: Colors.white,
-                      ),
+                    child: const CelticKnotLogo(
+                      size: 60,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 12),

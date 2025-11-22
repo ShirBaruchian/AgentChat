@@ -8,7 +8,7 @@ import 'api_service.dart';
 import '../core/config/api_config.dart';
 
 /// Service to track user usage (tokens/messages) using Firebase Anonymous Auth
-/// This works like ChatOn - each device gets a unique anonymous user ID
+/// This works like ChatX - each device gets a unique anonymous user ID
 /// that persists across app restarts without requiring sign-in
 class UsageService extends ChangeNotifier {
   static const String _tokensUsedKey = 'tokens_used';
