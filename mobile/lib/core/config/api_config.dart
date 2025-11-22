@@ -12,6 +12,7 @@ class ApiConfig {
   static const String agentsEndpoint = '/api/agents';
   static const String providerAgentsEndpoint = '/api/provider-agents'; // Endpoint for AI provider models
   static const String subscriptionEndpoint = '/api/subscription';
+  static const String usageEndpoint = '/api/usage'; // Token/usage tracking
   static const String healthEndpoint = '/health';
 
   // Timeout durations

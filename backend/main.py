@@ -9,7 +9,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 from dotenv import load_dotenv
 
-from routers import chat, agents, subscription, health, provider_agents
+from routers import chat, agents, subscription, health, provider_agents, usage
 from core.config import settings
 from core.firebase import initialize_firebase
 
@@ -47,6 +47,7 @@ app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(provider_agents.router, prefix="/api/provider-agents", tags=["provider-agents"])
 app.include_router(subscription.router, prefix="/api/subscription", tags=["subscription"])
+app.include_router(usage.router, prefix="/api/usage", tags=["usage"])
 
 
 @app.get("/")

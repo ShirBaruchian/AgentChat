@@ -15,8 +15,22 @@ import '../../widgets/feature_card.dart';
 import '../../widgets/task_card.dart';
 import '../../../settings/presentation/screens/debug_menu_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh token status from backend when screen appears
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UsageService>().refresh();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -145,23 +145,16 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    // Check usage/tokens
+    // Note: Token check and consumption happens on the backend
+    // We'll sync token status after the message is sent
+    // Frontend check is just for UX (showing warning before sending)
     final usageService = context.read<UsageService>();
     final subscriptionService = context.read<SubscriptionService>();
     
-    // Check if user has tokens remaining (unless premium)
+    // Show warning if tokens are low (but still allow sending - backend will enforce)
     if (!subscriptionService.isPremiumActive && !usageService.hasTokensRemaining) {
       _showTokenExhaustedDialog(context);
       return;
-    }
-    
-    // Use a token (if not premium)
-    if (!subscriptionService.isPremiumActive) {
-      final tokenUsed = await usageService.useToken();
-      if (!tokenUsed) {
-        _showTokenExhaustedDialog(context);
-        return;
-      }
     }
     
     // Get user ID (Firebase Anonymous Auth provides this automatically)
@@ -210,20 +203,35 @@ class _ChatScreenState extends State<ChatScreen> {
         provider: _selectedAgent?.provider != null ? _selectedAgent!.provider.apiValue : null,
         modelId: _selectedAgent?.modelId,
       );
+      
+      // Sync token status with backend after successful message
+      final usageService = Provider.of<UsageService>(context, listen: false);
+      await usageService.syncWithBackend();
     } catch (e) {
       setState(() {
         _isTyping = false;
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
       
-      // Show error message to user
-      _addMessage(
-        'Sorry, I encountered an error: $_errorMessage. Please try again.',
-        isUser: false,
-      );
-      
-      // Also show snackbar
-      _showError(_errorMessage ?? 'Failed to send message');
+      // Check if it's a token exhaustion error
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('token') || errorStr.contains('429')) {
+        // Sync with backend to get latest token status
+        final usageService = context.read<UsageService>();
+        await usageService.syncWithBackend();
+        
+        // Show token exhaustion dialog
+        _showTokenExhaustedDialog(context);
+      } else {
+        // Show error message to user
+        _addMessage(
+          'Sorry, I encountered an error: $_errorMessage. Please try again.',
+          isUser: false,
+        );
+        
+        // Also show snackbar
+        _showError(_errorMessage ?? 'Failed to send message');
+      }
     }
   }
   

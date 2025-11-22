@@ -32,10 +32,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Future<void> _loadAgents() async {
     // Only show loading indicator if we don't have any agents yet
     if (_agents.isEmpty) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     }
 
     try {
@@ -198,11 +198,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                   child: SizedBox(
                                     height: MediaQuery.of(context).size.height * 0.6,
                                     child: Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-                                          const SizedBox(height: 16),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
+                                    const SizedBox(height: 16),
                                     Text(
                                       'No agents available',
                                       style: AppTextStyles.heading4,
@@ -224,16 +224,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 child                            : ListView.builder(
                                 physics: const AlwaysScrollableScrollPhysics(),
                                 padding: const EdgeInsets.all(AppConstants.spacingL),
-                                  itemCount: _agents.length,
-                                  itemBuilder: (context, index) {
-                                    final agent = _agents[index];
+                                itemCount: _agents.length,
+                                itemBuilder: (context, index) {
+                                  final agent = _agents[index];
                                   return Padding(
                                     padding: EdgeInsets.only(
                                       bottom: index < _agents.length - 1 ? AppConstants.spacingM : 0,
                                     ),
                                     child: _buildAgentCardFromModel(context, agent),
                                   );
-                                  },
+                                },
                                 ),
                               ),
               ),

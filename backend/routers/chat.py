@@ -7,6 +7,7 @@ from google.cloud import firestore
 from core.firebase import verify_firebase_token, get_firestore_client
 from services.gemini_service import GeminiService
 from services.rate_limiter import RateLimiter
+from services.token_service import get_token_service
 
 router = APIRouter()
 gemini_service = GeminiService()
@@ -121,16 +122,25 @@ async def send_message(message_data: dict):
                 detail="Missing required fields: user_id, agent_id, or message"
             )
         
-        # Check rate limits (allow if check fails - for development)
-        try:
-            if not await get_rate_limiter().check_limit(user_id):
-                raise HTTPException(
-                    status_code=429,
-                    detail="Rate limit exceeded. Please upgrade your plan."
-                )
-        except Exception as e:
-            # If rate limiting fails (e.g., Firestore not configured), allow the message
-            print(f"Rate limit check failed (allowing message): {e}")
+        # Check tokens (each message = 1 token)
+        token_service = get_token_service()
+        can_use_token = await token_service.can_use_token(user_id)
+        
+        if not can_use_token:
+            # Get token status for error message
+            token_status = await token_service.get_token_status(user_id)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Free tokens exhausted. You've used {token_status['tokens_used']}/{token_status['tokens_limit']} tokens. Upgrade to Premium for unlimited messages."
+            )
+        
+        # Use a token before processing the message
+        token_used = await token_service.use_token(user_id)
+        if not token_used:
+            raise HTTPException(
+                status_code=429,
+                detail="Unable to use token. Please try again or upgrade to Premium."
+            )
         
         # Get agent response
         response = await gemini_service.get_agent_response(

@@ -178,6 +178,33 @@ class ApiService {
     }
   }
 
+  /// Get usage/token status from backend
+  Future<Map<String, dynamic>> getUsageStatus(String userId) async {
+    try {
+      final headers = await _getHeaders();
+      final url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.usageEndpoint}/status/$userId');
+
+      final response = await _client
+          .get(
+            url,
+            headers: headers,
+          )
+          .timeout(ApiConfig.receiveTimeout);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+            'Failed to load usage status: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Network error: ${e.toString()}');
+    }
+  }
+
   /// Check if backend is healthy
   Future<bool> checkHealth() async {
     try {
