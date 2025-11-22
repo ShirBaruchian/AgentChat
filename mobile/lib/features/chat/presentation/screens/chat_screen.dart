@@ -7,6 +7,8 @@ import '../../../../models/ai_provider.dart';
 import '../../../../models/provider_agent.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_service.dart';
+import '../../../../services/usage_service.dart';
+import '../../../../services/subscription_service.dart';
 import '../../../../core/widgets/message_bubble.dart';
 import '../../../../core/widgets/typing_indicator.dart';
 import '../../../../core/widgets/agent_dropdown.dart';
@@ -17,6 +19,7 @@ import '../../../../core/utils/icon_helper.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../home/widgets/premium_banner.dart' show PremiumUpgradeDialog;
 
 class ChatScreen extends StatefulWidget {
   final Agent? agent;
@@ -142,17 +145,27 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    // Get current user
-    final authService = context.read<AuthService>();
-    final user = authService.currentUser;
+    // Check usage/tokens
+    final usageService = context.read<UsageService>();
+    final subscriptionService = context.read<SubscriptionService>();
     
-    if (user == null) {
-      _showError('Please sign in to send messages');
+    // Check if user has tokens remaining (unless premium)
+    if (!subscriptionService.isPremiumActive && !usageService.hasTokensRemaining) {
+      _showTokenExhaustedDialog(context);
       return;
     }
     
-    // Get user ID (works with both MockUser and Firebase User)
-    final userId = user.uid;
+    // Use a token (if not premium)
+    if (!subscriptionService.isPremiumActive) {
+      final tokenUsed = await usageService.useToken();
+      if (!tokenUsed) {
+        _showTokenExhaustedDialog(context);
+        return;
+      }
+    }
+    
+    // Get user ID (Firebase Anonymous Auth provides this automatically)
+    final userId = await usageService.getUserId();
 
     // Add user message
     _addMessage(text, isUser: true);
@@ -236,6 +249,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final agentColor = widget.agent != null && widget.agent!.color != null
         ? Color(widget.agent!.color!)
         : const Color(0xFF10B981);
+    final usageService = context.watch<UsageService>();
+    final subscriptionService = context.watch<SubscriptionService>();
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -274,6 +289,50 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
+          // Token count (if not premium)
+          if (!subscriptionService.isPremiumActive)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingS),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.spacingM,
+                  vertical: AppConstants.spacingXS,
+                ),
+                decoration: BoxDecoration(
+                  color: usageService.hasTokensRemaining
+                      ? AppTheme.primaryColor.withOpacity(0.2)
+                      : Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusCircular),
+                  border: Border.all(
+                    color: usageService.hasTokensRemaining
+                        ? AppTheme.primaryColor
+                        : Colors.orange,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.bolt,
+                      color: usageService.hasTokensRemaining
+                          ? AppTheme.primaryColor
+                          : Colors.orange,
+                      size: AppConstants.iconSizeS,
+                    ),
+                    const SizedBox(width: AppConstants.spacingXS),
+                    Text(
+                      '${usageService.tokensRemaining}',
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: usageService.hasTokensRemaining
+                            ? AppTheme.primaryColor
+                            : Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Agent dropdown
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingS),
@@ -405,5 +464,53 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
+  void _showTokenExhaustedDialog(BuildContext context) {
+    final subscriptionService = context.read<SubscriptionService>();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Text(
+          'Free Tokens Used Up',
+          style: AppTextStyles.heading4,
+        ),
+        content: Text(
+          'You\'ve used all 6 free tokens. Upgrade to Premium for unlimited messages!',
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Maybe Later',
+              style: AppTextStyles.labelMedium.copyWith(
+                color: Colors.white70,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to premium upgrade
+              showDialog(
+                context: context,
+                builder: (context) => const PremiumUpgradeDialog(),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+            ),
+            child: Text(
+              'Upgrade to Premium',
+              style: AppTextStyles.buttonMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
 

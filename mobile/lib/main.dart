@@ -6,8 +6,11 @@ import 'core/config/firebase_config.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/chat/presentation/screens/chat_list_screen.dart';
 import 'features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'features/home/presentation/screens/home_screen.dart';
 import 'services/auth_service.dart';
 import 'services/onboarding_service.dart';
+import 'services/subscription_service.dart';
+import 'services/usage_service.dart';
 
 // Global key to preserve LoginScreen state across rebuilds
 final _loginScreenKey = GlobalKey();
@@ -49,6 +52,17 @@ class MyApp extends StatelessWidget {
       return MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => AuthService()),
+          ChangeNotifierProvider(create: (_) => SubscriptionService()),
+          ChangeNotifierProxyProvider<SubscriptionService, UsageService>(
+            create: (_) {
+              // Create a temporary instance - this should never be used
+              // as update will always be called
+              final tempSubscriptionService = SubscriptionService();
+              return UsageService(tempSubscriptionService);
+            },
+            update: (_, subscriptionService, previous) =>
+                previous ?? UsageService(subscriptionService),
+          ),
           // Add other providers here
         ],
         child: MaterialApp(
@@ -133,18 +147,9 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthService>(
-      builder: (context, authService, _) {
-        // Don't show loading screen - let LoginScreen handle its own loading state
-        // This prevents rebuilds that would lose error state
-        if (authService.currentUser == null) {
-          // Use a key to preserve LoginScreen state across rebuilds
-          return LoginScreen(key: _loginScreenKey);
-        }
-        
-        return const ChatListScreen();
-      },
-    );
+    // Always show HomeScreen - users can use app anonymously or sign in
+    // The HomeScreen will handle showing login if needed
+    return const HomeScreen();
   }
 }
 

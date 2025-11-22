@@ -21,11 +21,45 @@ class AuthService extends ChangeNotifier {
     // Listen to auth state changes
     _auth.authStateChanges().listen((firebase_auth.User? user) {
       notifyListeners();
+      // Auto-sign in anonymously if user signs out
+      if (user == null) {
+        _ensureAnonymousUser();
+      }
     });
     
     // Initialize loading state
     _isLoading = false;
     notifyListeners();
+    
+    // Auto-sign in anonymously if no user
+    _ensureAnonymousUser();
+  }
+
+  /// Ensure user is authenticated (anonymous if needed)
+  Future<void> _ensureAnonymousUser() async {
+    if (_auth.currentUser == null) {
+      try {
+        await _auth.signInAnonymously();
+        print('Signed in anonymously with UID: ${_auth.currentUser?.uid}');
+      } catch (e) {
+        print('Error signing in anonymously: $e');
+      }
+    }
+  }
+
+  /// Sign in anonymously (for guest users)
+  Future<void> signInAnonymously() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await _auth.signInAnonymously();
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      throw AuthException('Failed to sign in anonymously: ${e.toString()}');
+    }
   }
 
   Future<void> signInWithEmailAndPassword(

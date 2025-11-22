@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../../services/auth_service.dart';
 import '../../../../services/onboarding_service.dart';
-import '../../../../features/auth/presentation/screens/login_screen.dart';
-import '../../../../features/chat/presentation/screens/chat_list_screen.dart';
+import '../../../../features/home/presentation/screens/home_screen.dart';
 import 'onboarding_pages/welcome_page.dart';
 import 'onboarding_pages/example_prompts_page.dart';
 import 'onboarding_pages/writing_features_page.dart';
@@ -43,10 +40,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _completeOnboarding() async {
     await OnboardingService.completeOnboarding();
     if (mounted) {
-      // Navigate to login screen
+      // Navigate to home screen
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const AuthWrapper(),
+          builder: (context) => const HomeScreen(),
         ),
       );
     }
@@ -134,20 +131,4 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-// Temporary AuthWrapper for navigation
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<AuthService>(
-      builder: (context, authService, _) {
-        if (authService.currentUser == null) {
-          return const LoginScreen();
-        }
-        return const ChatListScreen();
-      },
-    );
-  }
-}
 
