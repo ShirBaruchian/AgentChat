@@ -19,7 +19,7 @@ import '../../../../core/utils/icon_helper.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../home/widgets/premium_banner.dart' show PremiumUpgradeDialog;
+import '../../../subscription/presentation/screens/subscription_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final Agent? agent;
@@ -474,48 +474,11 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showTokenExhaustedDialog(BuildContext context) {
-    final subscriptionService = context.read<SubscriptionService>();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: Text(
-          'Free Tokens Used Up',
-          style: AppTextStyles.heading4,
-        ),
-        content: Text(
-          'You\'ve used all 6 free tokens. Upgrade to Premium for unlimited messages!',
-          style: AppTextStyles.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Maybe Later',
-              style: AppTextStyles.labelMedium.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Navigate to premium upgrade
-              showDialog(
-                context: context,
-                builder: (context) => const PremiumUpgradeDialog(),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-            ),
-            child: Text(
-              'Upgrade to Premium',
-              style: AppTextStyles.buttonMedium,
-            ),
-          ),
-        ],
+    // Navigate directly to subscription screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SubscriptionScreen(),
       ),
     );
   }

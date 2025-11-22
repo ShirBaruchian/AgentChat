@@ -4,6 +4,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../services/subscription_service.dart';
+import '../../subscription/presentation/screens/subscription_screen.dart';
 
 class PremiumBanner extends StatelessWidget {
   const PremiumBanner({super.key});
@@ -12,10 +13,12 @@ class PremiumBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to premium upgrade
-        showDialog(
-          context: context,
-          builder: (context) => PremiumUpgradeDialog(),
+        // Navigate directly to subscription screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SubscriptionScreen(),
+          ),
         );
       },
       child: Container(

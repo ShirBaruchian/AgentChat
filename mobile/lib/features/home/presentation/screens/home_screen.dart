@@ -10,7 +10,8 @@ import '../../../../services/auth_service.dart';
 import '../../../../services/usage_service.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../chat/presentation/screens/chat_screen.dart';
-import '../../widgets/premium_banner.dart' show PremiumBanner, PremiumUpgradeDialog;
+import '../../widgets/premium_banner.dart' show PremiumBanner;
+import '../../../subscription/presentation/screens/subscription_screen.dart';
 import '../../widgets/feature_card.dart';
 import '../../widgets/task_card.dart';
 import '../../../settings/presentation/screens/debug_menu_screen.dart';
@@ -522,52 +523,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showPremiumDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: Text(
-          'Premium Feature',
-          style: AppTextStyles.heading4,
-        ),
-        content: Text(
-          'This feature is available for premium users. Upgrade to unlock all premium features!',
-          style: AppTextStyles.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: AppTextStyles.labelMedium.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showPremiumUpgrade(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-            ),
-            child: Text(
-              'Upgrade',
-              style: AppTextStyles.buttonMedium,
-            ),
-          ),
-        ],
+    // Navigate directly to subscription screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SubscriptionScreen(),
       ),
-    );
-  }
-
-  void _showPremiumUpgrade(BuildContext context) {
-    // Navigate to premium upgrade screen
-    // For now, we'll show a simple dialog
-    showDialog(
-      context: context,
-      builder: (context) => const PremiumUpgradeDialog(),
     );
   }
 }
